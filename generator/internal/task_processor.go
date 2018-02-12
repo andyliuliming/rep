@@ -43,6 +43,7 @@ func (p *taskProcessor) Process(logger lager.Logger, container executor.Containe
 	logger.Debug("starting")
 	defer logger.Debug("finished")
 
+	logger.Error("################## (andliu) Process in task_processor.", nil) //, lager.Data{"container": container})
 	switch container.State {
 	case executor.StateReserved:
 		logger.Debug("processing-reserved-container")

@@ -49,6 +49,7 @@ func (p *ordinaryLRPProcessor) Process(logger lager.Logger, container executor.C
 	logger = logger.WithData(lager.Data{"lrp-instance-key": instanceKey})
 
 	lrpContainer := newLRPContainer(lrpKey, instanceKey, container)
+	logger.Error("################## (andliu) Process in ordnary_lrp_processor.", nil, lager.Data{"lrpContainer": lrpContainer.Container})
 	switch lrpContainer.Container.State {
 	case executor.StateReserved:
 		p.processReservedContainer(logger, lrpContainer)

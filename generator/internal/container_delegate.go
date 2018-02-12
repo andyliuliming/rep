@@ -48,9 +48,10 @@ func (d *containerDelegate) GetContainer(logger lager.Logger, guid string) (exec
 
 func (d *containerDelegate) RunContainer(logger lager.Logger, req *executor.RunRequest) bool {
 	logger.Info("running-container")
+	logger.Error("##############(andliu) RunContainer", nil)
 	err := d.client.RunContainer(logger, req)
 	if err != nil {
-		logInfoOrError(logger, "failed-running-container", err)
+		logInfoOrError(logger, "##############(andliu) failed-running-container", err)
 		d.DeleteContainer(logger, req.Guid)
 		return false
 	}

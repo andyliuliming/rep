@@ -34,6 +34,7 @@ import (
 	locketmodels "code.cloudfoundry.org/locket/models"
 	"code.cloudfoundry.org/operationq"
 	"code.cloudfoundry.org/rep"
+	"code.cloudfoundry.org/rep/adapters"
 	"code.cloudfoundry.org/rep/auctioncellrep"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
 	"code.cloudfoundry.org/rep/evacuation"
@@ -84,7 +85,7 @@ func main() {
 
 	clock := clock.NewClock()
 	logger, reconfigurableSink := lagerflags.NewFromConfig(repConfig.SessionName, repConfig.LagerConfig)
-
+	logger.Error("###################### (andliu) %s", nil, lager.Data{"configFilePath": *configFilePath})
 	var gardenHealthcheckRootFS string
 
 	rootFSes := repConfig.PreloadedRootFS
@@ -108,6 +109,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	// check the container service provider to contruct different executer client.
+	// this is default to repot.go
 	executorClient, executorMembers, err := executorinit.Initialize(logger, repConfig.ExecutorConfig, gardenHealthcheckRootFS, metronClient, clock)
 	if err != nil {
 		logger.Error("failed-to-initialize-executor", err)
@@ -115,6 +118,8 @@ func main() {
 	}
 	defer executorClient.Cleanup(logger)
 
+	// adapter for the azure container instances
+	executorClientAdapted := adapters.NewAciAdapterClient(executorClient)
 	consulClient := initializeConsulClient(logger, repConfig)
 
 	serviceClient := maintain.NewCellPresenceClient(consulClient, clock)
@@ -127,7 +132,7 @@ func main() {
 	evacuator := evacuation.NewEvacuator(
 		logger,
 		clock,
-		executorClient,
+		executorClientAdapted,
 		evacuationNotifier,
 		repConfig.CellID,
 		time.Duration(repConfig.EvacuationTimeout),
@@ -137,7 +142,7 @@ func main() {
 	bbsClient := initializeBBSClient(logger, repConfig)
 	url := repURL(repConfig)
 	address := repAddress(logger, repConfig)
-	cellPresence := initializeCellPresence(address, serviceClient, executorClient, logger, repConfig, rootFSNames, url)
+	cellPresence := initializeCellPresence(address, serviceClient, executorClientAdapted, logger, repConfig, rootFSNames, url)
 	auctionCellRep := auctioncellrep.New(
 		repConfig.CellID,
 		url,
@@ -145,20 +150,20 @@ func main() {
 		repConfig.SupportedProviders,
 		repConfig.Zone,
 		auctioncellrep.GenerateGuid,
-		executorClient,
+		executorClientAdapted,
 		evacuationReporter,
 		repConfig.PlacementTags,
 		repConfig.OptionalPlacementTags,
 		repConfig.ProxyMemoryAllocationMB,
 		repConfig.EnableContainerProxy,
 	)
-	httpServer := initializeServer(auctionCellRep, executorClient, evacuatable, logger, repConfig, false)
-	httpsServer := initializeServer(auctionCellRep, executorClient, evacuatable, logger, repConfig, true)
+	httpServer := initializeServer(auctionCellRep, executorClientAdapted, evacuatable, logger, repConfig, false)
+	httpsServer := initializeServer(auctionCellRep, executorClientAdapted, evacuatable, logger, repConfig, true)
 
 	opGenerator := generator.New(
 		repConfig.CellID,
 		bbsClient,
-		executorClient,
+		executorClientAdapted,
 		evacuationReporter,
 		uint64(time.Duration(repConfig.EvacuationTimeout).Seconds()),
 	)
@@ -168,7 +173,7 @@ func main() {
 		repConfig.CellID,
 		time.Duration(repConfig.GracefulShutdownInterval),
 		bbsClient,
-		executorClient,
+		executorClientAdapted,
 		clock,
 		metronClient,
 	)

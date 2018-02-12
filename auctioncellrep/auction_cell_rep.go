@@ -136,30 +136,33 @@ func rootFSURLFromPath(rootfsPath string, stackPathMap rep.StackPathMap) string 
 func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error) {
 	logger = logger.Session("auction-state")
 	logger.Info("providing")
-
+	logger.Error("################## (andliu) State !!", nil)
+	logger.Error("################## (andliu) pre a.client.ListContainers", nil)
 	containers, err := a.client.ListContainers(logger)
 	if err != nil {
 		logger.Error("failed-to-fetch-containers", err)
 		return rep.CellState{}, false, err
 	}
-
+	logger.Error("################## (andliu) pre a.client.TotalResources", nil)
 	totalResources, err := a.client.TotalResources(logger)
 	if err != nil {
 		logger.Error("failed-to-get-total-resources", err)
 		return rep.CellState{}, false, err
 	}
-
+	logger.Error("################## (andliu) pre a.client.RemainingResources", nil)
 	availableResources, err := a.client.RemainingResources(logger)
 	if err != nil {
 		logger.Error("failed-to-get-remaining-resource", err)
 		return rep.CellState{}, false, err
 	}
 
-	volumeDrivers, err := a.client.VolumeDrivers(logger)
+	logger.Error("################## (andliu) pre a.client.VolumeDrivers", nil)
+	volumeDriversG, err := a.client.VolumeDrivers(logger)
 	if err != nil {
 		logger.Error("failed-to-get-volume-drivers", err)
 		return rep.CellState{}, false, err
 	}
+	logger.Error("################## (andliu) volumeDrivers", nil, lager.Data{"volumedrivers": (volumeDriversG)})
 
 	lrps := []rep.LRP{}
 	tasks := []rep.Task{}
@@ -228,11 +231,11 @@ func (a *AuctionCellRep) State(logger lager.Logger) (rep.CellState, bool, error)
 		a.zone,
 		startingContainerCount,
 		a.evacuationReporter.Evacuating(),
-		volumeDrivers,
+		volumeDriversG,
 		a.placementTags,
 		a.optionalPlacementTags,
 	)
-
+	logger.Error("############### (andliu) pre a.client.Healthy", nil)
 	healthy := a.client.Healthy(logger)
 	if !healthy {
 		logger.Error("failed-garden-health-check", nil)
@@ -256,6 +259,7 @@ func containerIsStarting(container *executor.Container) bool {
 }
 
 func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, error) {
+	logger.Error("################# (andliu) Perform", nil)
 	var failedWork = rep.Work{}
 
 	logger = logger.Session("auction-work", lager.Data{
@@ -270,6 +274,7 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 	}
 
 	if a.enableContainerProxy {
+		logger.Error("################# (andliu) enableContainerProxy pre a.client.RemainingResources", nil)
 		remainingResources, err := a.client.RemainingResources(logger)
 		if err != nil {
 			logger.Error("failed-gathering-remaining-reosurces", err)
@@ -291,9 +296,10 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 		return work, nil
 	}
 
+	logger.Error("################# (andliu) work is:", nil, lager.Data{"work": work})
 	if len(work.LRPs) > 0 {
 		lrpLogger := logger.Session("lrp-allocate-instances")
-
+		lrpLogger.Info("################ (andliu) work.LRPs", lager.Data{"lrps": work.LRPs})
 		requests, lrpMap, untranslatedLRPs := a.lrpsToAllocationRequest(work.LRPs)
 		if len(untranslatedLRPs) > 0 {
 			lrpLogger.Info("failed-to-translate-lrps-to-containers", lager.Data{"num-failed-to-translate": len(untranslatedLRPs)})
@@ -301,6 +307,7 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 		}
 
 		lrpLogger.Info("requesting-container-allocation", lager.Data{"num-requesting-allocation": len(requests)})
+		lrpLogger.Error("################ (andliu) pre a.client.AllocateContainers", nil, lager.Data{"requests": requests})
 		failures, err := a.client.AllocateContainers(logger, requests)
 		if err != nil {
 			lrpLogger.Error("failed-requesting-container-allocation", err)
@@ -320,6 +327,7 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 	if len(work.Tasks) > 0 {
 		taskLogger := logger.Session("task-allocate-instances")
 
+		taskLogger.Info("################ (andliu) work.Tasks", lager.Data{"tasks": work.Tasks})
 		requests, taskMap, failedTasks := a.tasksToAllocationRequests(work.Tasks)
 		if len(failedTasks) > 0 {
 			taskLogger.Info("failed-to-translate-tasks-to-containers", lager.Data{"num-failed-to-translate": len(failedTasks)})
@@ -327,6 +335,7 @@ func (a *AuctionCellRep) Perform(logger lager.Logger, work rep.Work) (rep.Work, 
 		}
 
 		taskLogger.Info("requesting-container-allocation", lager.Data{"num-requesting-allocation": len(requests)})
+		taskLogger.Error("################ (andliu) pre a.client.AllocateContainers", nil)
 		failures, err := a.client.AllocateContainers(logger, requests)
 		if err != nil {
 			taskLogger.Error("failed-requesting-container-allocation", err)
