@@ -107,7 +107,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	executorClient, executorMembers, err := executorinit.Initialize(logger, repConfig.ExecutorConfig, gardenHealthcheckRootFS, metronClient, clock)
+	executorClient, executorMembers, err := executorinit.Initialize(logger, repConfig.ExecutorConfig, repConfig.VContainerClientConfig, gardenHealthcheckRootFS, metronClient, clock)
 	if err != nil {
 		logger.Error("failed-to-initialize-executor", err)
 		os.Exit(1)
