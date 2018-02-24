@@ -12,6 +12,7 @@ import (
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/durationjson"
 	executorinit "code.cloudfoundry.org/executor/initializer"
+	"code.cloudfoundry.org/executor/model"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
 	"code.cloudfoundry.org/rep"
@@ -112,7 +113,7 @@ type RepConfig struct {
 	LoggregatorConfig               loggingclient.Config  `json:"loggregator"`
 	CellRegistrationsLocketEnabled  bool                  `json:"cell_registrations_locket_enabled"`
 	debugserver.DebugServerConfig
-	executorinit.ExecutorConfig
+	model.ExecutorConfig
 	lagerflags.LagerConfig
 	locket.ClientLocketConfig
 }
